@@ -1,0 +1,16 @@
+__title__ = 'TweetBase'
+__version__ = '0.1.0'
+__author__ = 'Jonas Geduldig'
+__license__ = 'MIT'
+__copyright__ = 'Copyright 2014 Jonas Geduldig'
+
+
+try:
+	from .TweetCouch import TweetCouch
+except:
+	pass
+
+
+__all__ = [
+	'TweetCouch'
+]

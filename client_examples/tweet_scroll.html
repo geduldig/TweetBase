@@ -1,0 +1,48 @@
+<!doctype html5>
+<html lang=en>
+	<head>
+		<meta charset=utf-8>
+		<title>TweetBase</title>
+		<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+		<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+		<script src="./tweetbase.js"></script>
+		<style>
+		.tweet {
+			margin: 4px;
+			padding: 2px;
+			background-color: linen;
+			border-style: solid;
+			border-width: thin;
+			border-color: orange;
+			font-size: 20px;
+		}
+		</style>
+	<body>
+	<div id='test'/>
+	<script>
+		/*
+		Let's say you create a database called "tw_test" and fill it with tweets containing "pizza" with this command:
+		python -m TweetBase.TweetBase -couchurl http://127.0.0.1:5984 -dbname tw_test -endpoint statuses/filter -parameters track=pizza
+		*/
+		$(document).ready(function() {
+			var tb = tweetbase(jQuery, {database:'tw_test', updateCallback:updateTweet});
+			tb.startFeed();
+		});
+		
+		var tweets = [];
+
+		function updateTweet(item)
+		{
+			tweets.push(item);
+			if (tweets.length > 10) 
+				tweets.shift();
+			var list = d3.select('#test').selectAll('.tweet')
+				.data(tweets)
+				.html(function(d) { return '<b>' + d.user.screen_name + '</b>: ' + d.status.text; });
+			list.enter()
+				.append('div')
+				.attr('class', 'tweet');
+			list.exit()
+				.remove();
+		}
+	</script>
