@@ -1,5 +1,7 @@
 TweetBase
 =========
+[![Downloads](https://pypip.in/d/TweetBase/badge.png)](https://crate.io/packages/TweetBase)
+[![Downloads](https://pypip.in/v/TweetBase/badge.png)](https://crate.io/packages/TweetBase) 
 
 Download tweets into a CouchDB database
 
@@ -13,8 +15,11 @@ Features
 Installation
 ------------
 
-* Install Python packages TwitterAPI, TwitterAPI, and couchdb using pip.
-* Install CouchDB database using its installer
+* Install Python packages TwitterAPI, TwitterGeoPics, and couchdb using pip:
+
+	pip install TweetBase
+
+* Install [CouchDB](http://couchdb.apache.org)
 
 Usage
 -----
