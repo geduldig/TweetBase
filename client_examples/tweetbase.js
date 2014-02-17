@@ -4,7 +4,7 @@ var tweetbase = (function ($, options) {
 
 	var my = {};
 	my.server = options.server || '127.0.0.1';
-	my.database = options.database || 'twdb1';
+	my.database = options.database || 'tw_test';
 	my.live = options.live || true;
 	my.max_old_tweets = options.max_old_tweets || 10;
 	my.update_interval = options.update_interval || 3000;
@@ -26,65 +26,46 @@ var tweetbase = (function ($, options) {
 	};
 
 	my.getCount = function(callback) {
-		$.ajax({
-			url: DB_GETCOUNT,
-			dataType: 'jsonp',
-			success: function(data) {
-				if (data.rows != null && data.rows.length == 1) {
-					count = data.rows[0].value;
-					callback(count);
-				}
-			},
-			error: function(status) {
-				error(JSON.stringify(status));
+		queryDatabase(DB_GETCOUNT, null, function(data) {
+			if (data.rows != null && data.rows.length == 1) {
+				count = data.rows[0].value;
+				callback(count);
 			}
 		});
 	};
 
 	my.getTweets = function(params) {
-		$.ajax({
-			url: DB_GETTWEETS,
-			data: params,
-			dataType: 'jsonp',
-			success: function(data) {
-				if (data.rows != null && data.rows.length > 0) {
-					last_id = data.rows[data.rows.length-1].value.id;
-					displayTweets(data.rows, my.updateCallback);
-				}
-				setTimeout(function() { my.getTweets({ startkey:incrID(last_id) }); }, my.update_interval);
-			},
-			error: function(status) {
-				error(JSON.stringify(status));
+		queryDatabase(DB_GETTWEETS, params, function(data) {
+			if (data.rows != null && data.rows.length > 0) {
+				last_id = data.rows[data.rows.length-1].key;
+				displayTweets(data.rows, my.updateCallback);
 			}
+			setTimeout(function() { my.getTweets({ startkey:'"'+incrID(last_id)+'"' }); }, my.update_interval);
 		});
 	};
  
 	my.getTweetByID = function(id, callback) {
-		$.ajax({
-			url: DB_GETTWEETS,
-			data: {key:id},
-			dataType: 'jsonp',
-			success: function(data) {
-				if (data.rows != null && data.rows.length > 0) 
-					callback(data.rows[0].value);
-			},
-			error: function(status) {
-				error(JSON.stringify(status));
-			}
+		queryDatabase(DB_GETTWEETS, {key:id}, function(data) {
+			if (data.rows != null && data.rows.length > 0) 
+				callback(data.rows[0].value);
 		});
 	};
 
 	my.getUser = function(status, callback) {
+		queryDatabase(DB_GETUSERS, { key:'"'+status.user_id+'"' }, function(data) {
+			if (data.rows != null && data.rows.length == 1) {
+				user = data.rows[0].value;
+				callback(status, user);
+			}
+		});
+	};
+
+	function queryDatabase(view, params, callback) {
 		$.ajax({
-			url: DB_GETUSERS,
-			data: { key:status.user_id },
+			url: view,
+			data: params,
 			dataType: 'jsonp',
-			success: function(data) {
-				if (data.rows != null && data.rows.length == 1) {
-					user = data.rows[0].value;
-					callback(status, user);
-				}
-			},
+			success: callback,
 			error: function(status) {
 				error(JSON.stringify(status));
 			}

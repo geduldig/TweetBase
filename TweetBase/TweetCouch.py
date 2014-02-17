@@ -17,14 +17,21 @@ class TweetCouch(object):
 		count_type_reduce = 'function(keys, values) { return sum(values); }'
 		view = ViewDefinition('twitter', 'count_type', count_type_map, reduce_fun=count_type_reduce)
 		view.sync(self.db)
+		
+		# The unique key for each tweet is doc.id.  The key (a 64-bit long) is represented as a string because 
+		# the largest JavaScript long is 2^53.
+		# A problem arises because keys are sorted as strings and a doc.id may have fewer digits but a larger
+		# leading digit.  So, it is sorted in the wrong order.
+		# The solutions is to zero-pad the doc.id to fill 19 digits.  (The max 64-bit long - 2^63 - has 19 digits.)
+		# That is why we emit the doc.id key as ("0000000000000000000"+doc.id).slice(-19).
 
 		# twitter/get_tweets
-		get_tweets = 'function(doc) { if (doc.type == "TWITTER_STATUS") emit(+doc.id, doc); }'
+		get_tweets = 'function(doc) { if (doc.type == "TWITTER_STATUS") emit(("0000000000000000000"+doc.id).slice(-19), doc); }'
 		view = ViewDefinition('twitter', 'get_tweets', get_tweets)
 		view.sync(self.db)
 
 		# twitter/get_users
-		get_users = 'function(doc) { if (doc.type == "TWITTER_USER") emit(+doc.id, doc); }'
+		get_users = 'function(doc) { if (doc.type == "TWITTER_USER") emit(doc.id, doc); }'
 		view = ViewDefinition('twitter', 'get_users', get_users)
 		view.sync(self.db)
 
