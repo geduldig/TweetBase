@@ -5,7 +5,7 @@ import shlex
 import sys
 from TwitterAPI.TwitterOAuth import TwitterOAuth
 from TwitterAPI.TwitterAPI import TwitterAPI
-from TwitterBase.TweetCouch import TweetCouch
+from TweetBase.TweetCouch import TweetCouch
 from TwitterGeoPics.Geocoder import Geocoder
 
 
