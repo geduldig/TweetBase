@@ -1,6 +1,5 @@
 import argparse
 import codecs
-import os
 import shlex
 import sys
 from .TweetCouch import TweetCouch
@@ -54,11 +53,8 @@ def run(log):
 	args = parser.parse_args()
 	if (args.settings):
 		# read args from a settings file
-		path = os.path.dirname(__file__)
-		config_path = os.path.join(path, args.settings)
-		with open(config_path) as f:
-			args = f.read()
-			args = parser.parse_args(shlex.split(args))	
+		with open(args.settings) as f:
+			args = parser.parse_args(shlex.split(f.read()))	
 			log.write('DB: %s, %s %s\n' % (args.dbname, args.endpoint, args.parameters))
 
 	params = to_dict(args.parameters)
