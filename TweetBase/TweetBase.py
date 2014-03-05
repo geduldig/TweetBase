@@ -82,7 +82,7 @@ def run(log):
 					tweet_count = storage.tweet_count()
 					if args.prune and tweet_count > 2*args.prune:
 						prune_count = tweet_count - args.prune
-						print('*** PRUNING %s tweets...\n' % prune_count)
+						log.write('*** PRUNING %s tweets...\n' % prune_count)
 						storage.prune_tweets(prune_count)
 						storage.compact()
 				elif 'limit' in item:
