@@ -47,11 +47,9 @@ class TweetCouch(object):
         		return row['value']
 		return -1
 
-	def prune(self, max_count):
-		count = self.tweet_count()
-		if count > max_count:
-			for row in self.db.view('twitter/get_tweets', limit=count-max_count, descending=False):
-				self.db.delete(self.db[row.id])
+	def prune_tweets(self, count):
+		for row in self.db.view('twitter/get_tweets', limit=count, descending=False):
+			self.db.delete(self.db[row.id])
 
 	def compact(self):
 		self.db.compact()
@@ -111,6 +109,7 @@ class TweetCouch(object):
 		if not doc:
 			if 'retweeted_status' in tw:
 				self.save_tweet(tw['retweeted_status'], tw['id_str'])
+				# NEED TO UPDATE retweet_count OF tw['retweeted_status'] ???
 			self.save_user(tw['user'])
 			doc = self._new_tweet_doc(tw)
 		if retweeted_by_id:
