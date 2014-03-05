@@ -3,9 +3,9 @@ import codecs
 import os
 import shlex
 import sys
+from .TweetCouch import TweetCouch
 from TwitterAPI.TwitterOAuth import TwitterOAuth
 from TwitterAPI.TwitterAPI import TwitterAPI
-from TweetBase.TweetCouch import TweetCouch
 from TwitterGeoPics.Geocoder import Geocoder
 
 
