@@ -1,4 +1,4 @@
-from TwitterBase.tweetcouch import TweetCouch
+from TwitterBase.TweetCouch import TweetCouch
 
 
 DB_NAME = 'tw_test'

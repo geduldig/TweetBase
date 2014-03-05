@@ -1,5 +1,5 @@
 __title__ = 'TweetBase'
-__version__ = '0.1.3'
+__version__ = '0.1.4'
 __author__ = 'Jonas Geduldig'
 __license__ = 'MIT'
 __copyright__ = 'Copyright 2014 Jonas Geduldig'
