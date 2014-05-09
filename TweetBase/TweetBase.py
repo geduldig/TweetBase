@@ -25,6 +25,13 @@ def to_dict(param_list):
 
 def update_geocode(status, log):
 	"""Get geocode from tweet's 'coordinates' field (unlikely) or from tweet's location and Google."""
+	if status['coordinates']:
+		log.write('COORDINATES: %s\n' % status['coordinates']['coordinates'])
+	if status['place']:
+		log.write('PLACE: %s\n' % status['place']['full_name'])
+	if status['user']['location']:
+		log.write('LOCATION: %s\n' % status['user']['location'])
+
 	if not GEO.quota_exceeded:
 		try:
 			geocode = GEO.geocode_tweet(status)
@@ -33,8 +40,6 @@ def update_geocode(status, log):
 				location, latitude, longitude = geocode
 				status['user']['location'] = location
 				status['coordinates'] = {'coordinates':[longitude, latitude]}
-			else:
-				log.write('LOCATION: %s\n' % status['user']['location'])
 		except Exception as e:
 			if GEO.quota_exceeded:
 				log.write('GEOCODER QUOTA EXCEEDED: %s\n' % GEO.count_request)
@@ -70,10 +75,7 @@ def run(log):
 					log.write('ERROR %s: %s\n' % (item['code'], item['message']))
 				elif 'text' in item:
 					log.write('\n%s -- %s\n' % (item['user']['screen_name'], item['text']))
-					if item['coordinates']:
-						log.write('COORDINATES: %s\n' % item['coordinates']['coordinates'])
-					elif item['user']['location']:
-						update_geocode(item, log)
+					update_geocode(item, log)
 					storage.save_tweet(item)
 					tweet_count = storage.tweet_count()
 					if args.prune and tweet_count > 2*args.prune:
