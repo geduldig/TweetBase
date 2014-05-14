@@ -2,3 +2,4 @@ v0.1.0,     2 Nov 2014 -- Initial release.
 v0.1.6,     5 Mar 2014 -- Better tweet pruning.
 v0.1.7,     5 Mar 2014 -- Fixed settings command-line argument.
 v0.1.8,     8 May 2014 -- Inclusion of tweet place field for geocoding.
+v0.1.9,    14 May 2014 -- Added option to not store original retweeted tweet.

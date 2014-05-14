@@ -54,6 +54,7 @@ def run(log):
 	parser.add_argument('-endpoint', metavar='ENDPOINT', type=str, help='Twitter endpoint')
 	parser.add_argument('-parameters', metavar='NAME_VALUE', type=str, help='Twitter parameter NAME=VALUE', nargs='+')
 	parser.add_argument('-prune', metavar='PRUNE_COUNT', type=int, help='remove oldest tweets when threshhold reached')
+	parser.add_argument('-no_retweets', action='store_true', help='do not save retweeted tweets to database')
 
 	args = parser.parse_args()
 	if (args.settings):
@@ -76,7 +77,7 @@ def run(log):
 				elif 'text' in item:
 					log.write('\n%s -- %s\n' % (item['user']['screen_name'], item['text']))
 					update_geocode(item, log)
-					storage.save_tweet(item)
+					storage.save_tweet(item, save_retweeted_status=not args.no_retweets)
 					tweet_count = storage.tweet_count()
 					if args.prune and tweet_count > 2*args.prune:
 						prune_count = tweet_count - args.prune

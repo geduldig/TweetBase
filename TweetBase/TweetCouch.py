@@ -104,10 +104,10 @@ class TweetCouch(object):
 			'verified':                user['verified']
 		}
 
-	def save_tweet(self, tw, retweeted_by_id=None):
+	def save_tweet(self, tw, retweeted_by_id=None, save_retweeted_status=True):
 		doc = self.db.get(tw['id_str'])
 		if not doc:
-			if 'retweeted_status' in tw:
+			if save_retweeted_status and 'retweeted_status' in tw:
 				self.save_tweet(tw['retweeted_status'], tw['id_str'])
 				# NEED TO UPDATE retweet_count OF tw['retweeted_status'] ???
 			self.save_user(tw['user'])
