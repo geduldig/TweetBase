@@ -6,6 +6,8 @@ from .TweetCouch import TweetCouch
 from TwitterAPI.TwitterOAuth import TwitterOAuth
 from TwitterAPI.TwitterAPI import TwitterAPI
 from TwitterGeoPics.Geocoder import Geocoder
+from TwitterAPI.TwitterRestPager import TwitterRestPager
+from TwitterAPI.TwitterError import TwitterConnectionError
 
 
 # EXAMPLE SETTINGS
@@ -50,33 +52,42 @@ def run(log):
 	parser.add_argument('-settings', metavar='SETTINGS_FILE', type=str, help='file containing command line settings')
 	parser.add_argument('-couchurl', metavar='COUCH_URL', type=str, help='complete url for couchdb')
 	parser.add_argument('-dbname', metavar='DB_NAME', type=str, help='database name')
+	parser.add_argument('-prune', metavar='PRUNE_COUNT', type=int, help='remove oldest tweets when threshhold reached')
 	parser.add_argument('-oauth', metavar='FILE_NAME', type=str, help='file containing OAuth credentials')
 	parser.add_argument('-endpoint', metavar='ENDPOINT', type=str, help='Twitter endpoint')
 	parser.add_argument('-parameters', metavar='NAME_VALUE', type=str, help='Twitter parameter NAME=VALUE', nargs='+')
-	parser.add_argument('-prune', metavar='PRUNE_COUNT', type=int, help='remove oldest tweets when threshhold reached')
+	parser.add_argument('-pager', action='store_true', help='page from REST API until exhausted')
+	parser.add_argument('-no_geocode', action='store_true', help='do not lookup geocode')
 	parser.add_argument('-no_retweets', action='store_true', help='do not save retweeted tweets to database')
 
 	args = parser.parse_args()
-	if (args.settings):
-		# read args from a settings file
+	if args.settings:
+		# optionally, read args from a settings file instead of from command line
 		with open(args.settings) as f:
 			args = parser.parse_args(shlex.split(f.read()))	
 			log.write('DB: %s, %s %s\n' % (args.dbname, args.endpoint, args.parameters))
 
-	params = to_dict(args.parameters)
+	# twitter authentication
 	o = TwitterOAuth.read_file(args.oauth)
 	api = TwitterAPI(o.consumer_key, o.consumer_secret, o.access_token_key, o.access_token_secret)
 
+	# create iterator for twitter request
+	params = to_dict(args.parameters)
+	if args.pager:
+		iterator = TwitterRestPager(api, args.endpoint, params).get_iterator()
+	else:
+		iterator = api.request(args.endpoint, params).get_iterator()
+
+	# initialize database repository for tweets
 	storage = TweetCouch(args.dbname, args.couchurl)
 
 	while True:
 		try:
-			for item in api.request(args.endpoint, params):
-				if 'message' in item:
-					log.write('ERROR %s: %s\n' % (item['code'], item['message']))
-				elif 'text' in item:
+			for item in iterator:
+				if 'text' in item:
 					log.write('\n%s -- %s\n' % (item['user']['screen_name'], item['text']))
-					update_geocode(item, log)
+					if not args.no_geocode:
+						update_geocode(item, log)
 					storage.save_tweet(item, save_retweeted_status=not args.no_retweets)
 					tweet_count = storage.tweet_count()
 					if args.prune and tweet_count > 2*args.prune:
@@ -84,18 +95,22 @@ def run(log):
 						log.write('*** PRUNING %s tweets...\n' % prune_count)
 						storage.prune_tweets(prune_count)
 						storage.compact()
+				elif 'message' in item:
+					log.write('*** ERROR %s: %s\n' % (item['code'], item['message']))
 				elif 'limit' in item:
 					log.write('*** SKIPPED %s tweets' % item['limit'])
-			if args.endpoint == 'statuses/user_timeline':
-				log.write('*** Got one page of user timeline\n')
-				break
+					
+			break
 						
 		except KeyboardInterrupt:
-			log.write('\nTerminated by user\n')
+			log.write('\nTERMINATED BY USER\n')
 			break
+			
+		except TwitterConnectionError:
+			log.write('\nRE-CONNECTING..\n')
 		
 		except Exception as e:
-			log.write('*** STOPPED %s\n' % str(e))
+			log.write('\nERROR %s %s\nRE-CONNECTING\n' % (type(e), e.message))
 
 
 if __name__ == '__main__':
