@@ -3,11 +3,11 @@ import codecs
 import shlex
 import sys
 from .TweetCouch import TweetCouch
-from TwitterAPI.TwitterOAuth import TwitterOAuth
 from TwitterAPI.TwitterAPI import TwitterAPI
-from TwitterGeoPics.Geocoder import Geocoder
-from TwitterAPI.TwitterRestPager import TwitterRestPager
 from TwitterAPI.TwitterError import TwitterConnectionError
+from TwitterAPI.TwitterOAuth import TwitterOAuth
+from TwitterAPI.TwitterRestPager import TwitterRestPager
+from TwitterGeoPics.Geocoder import Geocoder
 
 
 # EXAMPLE SETTINGS
@@ -50,7 +50,7 @@ def update_geocode(status, log):
 def run(log):
 	parser = argparse.ArgumentParser(description='Request any Twitter Streaming or REST API endpoint')
 	parser.add_argument('-settings', metavar='SETTINGS_FILE', type=str, help='file containing command line settings')
-	parser.add_argument('-couchurl', metavar='COUCH_URL', type=str, help='complete url for couchdb')
+	parser.add_argument('-couchurl', metavar='COUCH_URL', type=str, help='complete url for couchdb', default='http://127.0.0.1:5984')
 	parser.add_argument('-dbname', metavar='DB_NAME', type=str, help='database name')
 	parser.add_argument('-prune', metavar='PRUNE_COUNT', type=int, help='remove oldest tweets when threshhold reached')
 	parser.add_argument('-oauth', metavar='FILE_NAME', type=str, help='file containing OAuth credentials')
@@ -62,7 +62,7 @@ def run(log):
 
 	args = parser.parse_args()
 	if args.settings:
-		# optionally, read args from a settings file instead of from command line
+		# optionally (no pun intended), read args from a settings file instead of from command line
 		with open(args.settings) as f:
 			args = parser.parse_args(shlex.split(f.read()))	
 			log.write('DB: %s, %s %s\n' % (args.dbname, args.endpoint, args.parameters))
@@ -71,18 +71,19 @@ def run(log):
 	o = TwitterOAuth.read_file(args.oauth)
 	api = TwitterAPI(o.consumer_key, o.consumer_secret, o.access_token_key, o.access_token_secret)
 
-	# create iterator for twitter request
-	params = to_dict(args.parameters)
-	if args.pager:
-		iterator = TwitterRestPager(api, args.endpoint, params).get_iterator()
-	else:
-		iterator = api.request(args.endpoint, params).get_iterator()
-
 	# initialize database repository for tweets
 	storage = TweetCouch(args.dbname, args.couchurl)
 
+	params = to_dict(args.parameters)
+
 	while True:
 		try:
+			# create iterator for twitter request
+			if args.pager:
+				iterator = TwitterRestPager(api, args.endpoint, params).get_iterator()
+			else:
+				iterator = api.request(args.endpoint, params).get_iterator()
+
 			for item in iterator:
 				if 'text' in item:
 					log.write('\n%s -- %s\n' % (item['user']['screen_name'], item['text']))
@@ -102,15 +103,16 @@ def run(log):
 					
 			break
 						
+		except TwitterConnectionError:
+			log.write('\nRE-CONNECTING..\n')
+		
 		except KeyboardInterrupt:
 			log.write('\nTERMINATED BY USER\n')
 			break
 			
-		except TwitterConnectionError:
-			log.write('\nRE-CONNECTING..\n')
-		
 		except Exception as e:
-			log.write('\nERROR %s %s\nRE-CONNECTING\n' % (type(e), e.message))
+			log.write('\nERROR %s %s\n' % (type(e), e.message))
+			break
 
 
 if __name__ == '__main__':
@@ -119,7 +121,4 @@ if __name__ == '__main__':
 	except: # python 2
 		sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 	
-	try:
-		run(sys.stdout)
-	except Exception as e:
-		print(str(e))
+	run(sys.stdout)
