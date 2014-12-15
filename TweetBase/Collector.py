@@ -99,19 +99,26 @@ def run(log):
 				elif 'message' in item:
 					log.write('*** ERROR %s: %s\n' % (item['code'], item['message']))
 				elif 'limit' in item:
-					log.write('*** SKIPPED %s tweets' % item['limit'])
+					log.write('*** SKIPPED %s tweets' % item['limit']['track'])
+				elif 'disconnect' in item:
+					if item['disconnect']['code'] in [2,5,6,7]:
+						raise Exception(item['disconnect'])
+					else:
+						logging.info('RE-CONNECTING: %s' % item['disconnect'])
+						break
 					
 			break
 						
 		except TwitterConnectionError:
 			log.write('\nRE-CONNECTING..\n')
+			continue
 		
 		except KeyboardInterrupt:
 			log.write('\nTERMINATED BY USER\n')
 			break
 			
 		except Exception as e:
-			log.write('\nERROR %s %s\n' % (type(e), e.message))
+			log.write('\nTERMINATING %s %s\n' % (type(e), e.message))
 			break
 
 
