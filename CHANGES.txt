@@ -6,3 +6,4 @@ v0.1.9,    14 May 2014 -- Added option to not store original retweeted tweet.
 v0.2.0,     4 Dec 2014 -- Added option to page REST API results
 v0.2.1,     5 Dec 2014 -- Renamed TweetBase.py to Collector.py
 v0.2.2,    15 Dec 2014 -- Updated Collector.py for fault tolerance
+v0.2.3,    12 Jan 2015 -- Updated Collector.py for paging

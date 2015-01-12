@@ -57,8 +57,9 @@ def run(log):
 	parser.add_argument('-endpoint', metavar='ENDPOINT', type=str, help='Twitter endpoint')
 	parser.add_argument('-parameters', metavar='NAME_VALUE', type=str, help='Twitter parameter NAME=VALUE', nargs='+')
 	parser.add_argument('-pager', action='store_true', help='page from REST API until exhausted')
-	parser.add_argument('-no_geocode', action='store_true', help='do not lookup geocode')
-	parser.add_argument('-no_retweets', action='store_true', help='do not save retweeted tweets to database')
+	parser.add_argument('-google_geocode', action='store_true', help='lookup geocode from Google')
+	parser.add_argument('-only_coords', action='store_true', help='throw out tweets that do not have coordinates')
+	parser.add_argument('-retweets', action='store_true', help='save retweeted tweets to database')
 
 	args = parser.parse_args()
 	if args.settings:
@@ -80,16 +81,18 @@ def run(log):
 		try:
 			# create iterator for twitter request
 			if args.pager:
-				iterator = TwitterRestPager(api, args.endpoint, params).get_iterator()
+				iterator = TwitterRestPager(api, args.endpoint, params).get_iterator(wait=6)
 			else:
 				iterator = api.request(args.endpoint, params).get_iterator()
 
 			for item in iterator:
 				if 'text' in item:
-					log.write('\n%s -- %s\n' % (item['user']['screen_name'], item['text']))
-					if not args.no_geocode:
+					if args.google_geocode:
 						update_geocode(item, log)
-					storage.save_tweet(item, save_retweeted_status=not args.no_retweets)
+					if args.only_coords and not item['coordinates']:
+						continue
+					log.write('\n%s -- %s\n' % (item['created_at'], item['text']))
+					storage.save_tweet(item, save_retweeted_status=args.retweets)
 					tweet_count = storage.tweet_count()
 					if args.prune and tweet_count > 2*args.prune:
 						prune_count = tweet_count - args.prune
