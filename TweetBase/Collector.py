@@ -1,3 +1,7 @@
+# EXAMPLE COMMAND LINE ARGS
+#-couchurl http://127.0.0.1:5984/ -dbname tw_test -oauth credentials.txt -endpoint statuses/filter -parameters track=zzz
+
+
 import argparse
 import codecs
 import shlex
@@ -10,8 +14,18 @@ from TwitterAPI.TwitterRestPager import TwitterRestPager
 from TwitterGeoPics.Geocoder import Geocoder
 
 
-# EXAMPLE SETTINGS
-#-couchurl http://127.0.0.1:5984/ -dbname tw_test -oauth credentials.txt -endpoint statuses/filter -parameters track=zzz
+# SET UP LOGGING TO FILE AND TO CONSOLE
+import logging
+formatter = logging.Formatter('%(levelname)s %(asctime)s %(message)s',
+                              '%m/%d/%Y %I:%M:%S %p')
+fh = logging.FileHandler('Collector.log')
+fh.setFormatter(formatter)
+ch = logging.StreamHandler()
+ch.setFormatter(formatter)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+logger.addHandler(fh)
+logger.addHandler(ch)
 
 
 GEO = Geocoder()
@@ -92,36 +106,37 @@ def run(log):
 					if args.only_coords and not item['coordinates']:
 						continue
 					log.write('\n%s -- %s\n' % (item['created_at'], item['text']))
+					logging.info('\n%s -- %s\n' % (item['created_at'], item['text']))
 					storage.save_tweet(item, save_retweeted_status=args.retweets)
 					tweet_count = storage.tweet_count()
 					if args.prune and tweet_count > 2*args.prune:
 						prune_count = tweet_count - args.prune
-						log.write('*** PRUNING %s tweets...\n' % prune_count)
+						logging.warning('*** PRUNING %s tweets...\n' % prune_count)
 						storage.prune_tweets(prune_count)
 						storage.compact()
 				elif 'message' in item:
-					log.write('*** ERROR %s: %s\n' % (item['code'], item['message']))
+					logging.error('*** ERROR %s: %s\n' % (item['code'], item['message']))
 				elif 'limit' in item:
-					log.write('*** SKIPPED %s tweets' % item['limit']['track'])
+					logging.warning('*** SKIPPED %s tweets' % item['limit']['track'])
 				elif 'disconnect' in item:
 					if item['disconnect']['code'] in [2,5,6,7]:
 						raise Exception(item['disconnect'])
 					else:
-						logging.info('RE-CONNECTING: %s' % item['disconnect'])
+						logging.warning('RE-CONNECTING: %s' % item['disconnect'])
 						break
 					
 			break
 						
-		except TwitterConnectionError:
-			log.write('\nRE-CONNECTING..\n')
-			continue
-		
 		except KeyboardInterrupt:
-			log.write('\nTERMINATED BY USER\n')
+			logging.info('\nTERMINATED BY USER\n')
 			break
 			
+		except TwitterConnectionError:
+			logging.warning('\nRE-CONNECTING..\n')
+			continue
+		
 		except Exception as e:
-			log.write('\nTERMINATING %s %s\n' % (type(e), e.message))
+			logging.error('\nTERMINATING %s %s\n' % (type(e), e.message))
 			break
 
 
