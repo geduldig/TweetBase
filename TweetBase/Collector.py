@@ -106,7 +106,6 @@ def run(log):
 					if args.only_coords and not item['coordinates']:
 						continue
 					log.write('\n%s -- %s\n' % (item['created_at'], item['text']))
-					logging.info('\n%s -- %s\n' % (item['created_at'], item['text']))
 					storage.save_tweet(item, save_retweeted_status=args.retweets)
 					tweet_count = storage.tweet_count()
 					if args.prune and tweet_count > 2*args.prune:
