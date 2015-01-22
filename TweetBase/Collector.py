@@ -112,16 +112,18 @@ def stream_collector(api, args, storage):
 						# must terminate
 						raise Exception(event)
 					else:
-						logging.warning('\nRE-CONNECTING: %s' % event)
+						logging.warning('*** RE-CONNECTING: %s' % event)
 						break
 				elif 'error' in item:
 					event = item['error'][0]
 					if event['code'] in [130,131]:
-						logging.warning('\nRE-CONNECTING: %s' % event)
+						logging.warning('*** RE-CONNECTING: %s' % event)
 						break
 					else:
 						# must terminate
 						raise Exception(event)
+				elif 'warning' in item:
+					logging.warning('*** WARNING: %s' % item['warning'])
 		except TwitterConnectionError:
 			continue
 
