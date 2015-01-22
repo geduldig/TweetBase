@@ -8,7 +8,6 @@ import shlex
 import sys
 from .TweetCouch import TweetCouch
 from TwitterAPI.TwitterAPI import TwitterAPI
-from TwitterAPI.TwitterError import TwitterConnectionError
 from TwitterAPI.TwitterOAuth import TwitterOAuth
 from TwitterAPI.TwitterRestPager import TwitterRestPager
 from TwitterGeoPics.Geocoder import Geocoder
@@ -61,6 +60,72 @@ def update_geocode(status, log):
 				log.write('GEOCODER QUOTA EXCEEDED: %s\n' % GEO.count_request)
 
 
+def prune_database(storage, prune_limit):
+	"""Remove oldest CouchDB documents to limit database size."""
+	tweet_count = storage.tweet_count()
+	if tweet_count > 2*prune_limit:
+		prune_count = tweet_count - prune_limit
+		logging.warning('*** PRUNING %s tweets...\n' % prune_count)
+		storage.prune_tweets(prune_count)
+		storage.compact()
+		
+
+def process_tweet(item, args, storage):
+	"""Do something with a downloaded tweet."""
+	if args.google_geocode:
+		update_geocode(item, log)
+	if args.only_coords and not item['coordinates']:
+		return
+	sys.stdout.write('\n%s -- %s\n' % (item['created_at'], item['text']))
+	storage.save_tweet(item, save_retweeted_status=args.retweets)
+	if args.prune:
+		prune_database(storage, args.prune)
+
+		
+def page_collector(api, args, storage):
+	"""Pull tweets from REST pages."""
+	params = to_dict(args.parameters)
+	iterator = TwitterRestPager(api, args.endpoint, params).get_iterator(wait=5.1)
+	for item in iterator:
+		if 'text' in item:
+			process_tweet(item, args, storage)
+		elif 'message' in item:
+			# must terminate
+			logging.error('*** ERROR: %s\n' % item)
+			break
+
+
+def stream_collector(api, args, storage):
+	"""Pull tweets from stream."""
+	params = to_dict(args.parameters)
+	while True:
+		try:
+			iterator = api.request(args.endpoint, params).get_iterator()
+			for item in iterator:
+				if 'text' in item:
+					process_tweet(item, args, storage)
+				elif 'limit' in item:
+					logging.warning('*** SKIPPED %s tweets' % item['limit']['track'])
+				elif 'disconnect' in item:
+					event = item['disconnect']
+					if event['code'] in [2,5,6,7]:
+						# must terminate
+						raise Exception(event)
+					else:
+						logging.warning('\nRE-CONNECTING: %s' % event)
+						break
+				elif 'error' in item:
+					event = item['error'][0]
+					if event['code'] in [130,131]:
+						logging.warning('\nRE-CONNECTING: %s' % event)
+						break
+					else:
+						# must terminate
+						raise Exception(event)
+		except TwitterConnectionError:
+			continue
+
+
 def run(log):
 	parser = argparse.ArgumentParser(description='Request any Twitter Streaming or REST API endpoint')
 	parser.add_argument('-settings', metavar='SETTINGS_FILE', type=str, help='file containing command line settings')
@@ -89,55 +154,16 @@ def run(log):
 	# initialize database repository for tweets
 	storage = TweetCouch(args.dbname, args.couchurl)
 
-	params = to_dict(args.parameters)
-
-	while True:
-		try:
-			# create iterator for twitter request
-			if args.pager:
-				iterator = TwitterRestPager(api, args.endpoint, params).get_iterator(wait=6)
-			else:
-				iterator = api.request(args.endpoint, params).get_iterator()
-
-			for item in iterator:
-				if 'text' in item:
-					if args.google_geocode:
-						update_geocode(item, log)
-					if args.only_coords and not item['coordinates']:
-						continue
-					log.write('\n%s -- %s\n' % (item['created_at'], item['text']))
-					storage.save_tweet(item, save_retweeted_status=args.retweets)
-					tweet_count = storage.tweet_count()
-					if args.prune and tweet_count > 2*args.prune:
-						prune_count = tweet_count - args.prune
-						logging.warning('*** PRUNING %s tweets...\n' % prune_count)
-						storage.prune_tweets(prune_count)
-						storage.compact()
-				elif 'message' in item:
-					logging.error('*** ERROR %s: %s\n' % (item['code'], item['message']))
-				elif 'limit' in item:
-					logging.warning('*** SKIPPED %s tweets' % item['limit']['track'])
-				elif 'disconnect' in item:
-					if item['disconnect']['code'] in [2,5,6,7]:
-						raise Exception(item['disconnect'])
-					else:
-						logging.warning('RE-CONNECTING: %s' % item['disconnect'])
-						break
-					
-			break
-						
-		except KeyboardInterrupt:
-			logging.info('\nTERMINATED BY USER\n')
-			break
-			
-		except TwitterConnectionError:
-			logging.warning('\nRE-CONNECTING..\n')
-			continue
-		
-		except Exception as e:
-			logging.error('\nTERMINATING %s %s\n' % (type(e), e.message))
-			break
-
+	try:
+		if args.pager:
+			page_collector(api, args, storage)
+		else:
+			stream_collector(api, args, storage)
+	except KeyboardInterrupt:
+		logging.info('\nTERMINATED BY USER\n')
+	except Exception as e:
+		logging.error('\nTERMINATING %s %s\n' % (type(e), e.message))
+	
 
 if __name__ == '__main__':
 	try:    # python 3
