@@ -8,6 +8,7 @@ import shlex
 import sys
 from .TweetCouch import TweetCouch
 from TwitterAPI.TwitterAPI import TwitterAPI
+from TwitterAPI.TwitterError import TwitterConnectionError
 from TwitterAPI.TwitterOAuth import TwitterOAuth
 from TwitterAPI.TwitterRestPager import TwitterRestPager
 from TwitterGeoPics.Geocoder import Geocoder
