@@ -39,26 +39,26 @@ def to_dict(param_list):
 		return None
 		
 
-def update_geocode(status, log):
+def update_geocode(status):
 	"""Get geocode from tweet's 'coordinates' field (unlikely) or from tweet's location and Google."""
 	if status['coordinates']:
-		log.write('COORDINATES: %s\n' % status['coordinates']['coordinates'])
+		sys.stdout.write('COORDINATES: %s\n' % status['coordinates']['coordinates'])
 	if status['place']:
-		log.write('PLACE: %s\n' % status['place']['full_name'])
+		sys.stdout.write('PLACE: %s\n' % status['place']['full_name'])
 	if status['user']['location']:
-		log.write('LOCATION: %s\n' % status['user']['location'])
+		sys.stdout.write('LOCATION: %s\n' % status['user']['location'])
 
 	if not GEO.quota_exceeded:
 		try:
 			geocode = GEO.geocode_tweet(status)
 			if geocode[0]:
-				log.write('GEOCODER: %s %s,%s\n' % geocode)
+				sys.stdout.write('GEOCODER: %s %s,%s\n' % geocode)
 				location, latitude, longitude = geocode
 				status['user']['location'] = location
 				status['coordinates'] = {'coordinates':[longitude, latitude]}
 		except Exception as e:
 			if GEO.quota_exceeded:
-				log.write('GEOCODER QUOTA EXCEEDED: %s\n' % GEO.count_request)
+				sys.stdout.write('GEOCODER QUOTA EXCEEDED: %s\n' % GEO.count_request)
 
 
 def prune_database(storage, prune_limit):
@@ -74,11 +74,13 @@ def prune_database(storage, prune_limit):
 def process_tweet(item, args, storage):
 	"""Do something with a downloaded tweet."""
 	if args.google_geocode:
-		update_geocode(item, log)
+		update_geocode(item)
 	if args.only_coords and not item['coordinates']:
 		return
 	sys.stdout.write('\n%s -- %s\n' % (item['created_at'], item['text']))
-	storage.save_tweet(item, save_retweeted_status=args.retweets)
+	storage.save_tweet(item, 
+	                   save_retweeted_status=args.retweets, 
+	                   id_time=(not args.pager)) # epoch time or tweet id
 	if args.prune:
 		prune_database(storage, args.prune)
 
@@ -106,30 +108,30 @@ def stream_collector(api, args, storage):
 				if 'text' in item:
 					process_tweet(item, args, storage)
 				elif 'limit' in item:
-					logging.warning('*** SKIPPED %s tweets' % item['limit']['track'])
+					logging.info('*** SKIPPED %s tweets' % item['limit']['track'])
+				elif 'warning' in item:
+					logging.warning('*** WARNING: %s' % item['warning'])
 				elif 'disconnect' in item:
 					event = item['disconnect']
 					if event['code'] in [2,5,6,7]:
 						# must terminate
 						raise Exception(event)
 					else:
-						logging.warning('*** RE-CONNECTING: %s' % event)
+						logging.info('*** RE-CONNECTING: %s' % event)
 						break
 				elif 'error' in item:
 					event = item['error'][0]
 					if event['code'] in [130,131]:
-						logging.warning('*** RE-CONNECTING: %s' % event)
+						logging.info('*** RE-CONNECTING: %s' % event)
 						break
 					else:
 						# must terminate
 						raise Exception(event)
-				elif 'warning' in item:
-					logging.warning('*** WARNING: %s' % item['warning'])
 		except TwitterConnectionError:
 			continue
 
 
-def run(log):
+def run():
 	parser = argparse.ArgumentParser(description='Request any Twitter Streaming or REST API endpoint')
 	parser.add_argument('-settings', metavar='SETTINGS_FILE', type=str, help='file containing command line settings')
 	parser.add_argument('-couchurl', metavar='COUCH_URL', type=str, help='complete url for couchdb', default='http://127.0.0.1:5984')
@@ -148,7 +150,7 @@ def run(log):
 		# optionally (no pun intended), read args from a settings file instead of from command line
 		with open(args.settings) as f:
 			args = parser.parse_args(shlex.split(f.read()))	
-			log.write('DB: %s, %s %s\n' % (args.dbname, args.endpoint, args.parameters))
+			sys.stdout.write('DB: %s, %s %s\n' % (args.dbname, args.endpoint, args.parameters))
 
 	# twitter authentication
 	o = TwitterOAuth.read_file(args.oauth)
@@ -174,4 +176,4 @@ if __name__ == '__main__':
 	except: # python 2
 		sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 	
-	run(sys.stdout)
+	run()
