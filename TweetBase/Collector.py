@@ -66,7 +66,7 @@ def prune_database(storage, prune_limit):
 	tweet_count = storage.tweet_count()
 	if tweet_count > 2*prune_limit:
 		prune_count = tweet_count - prune_limit
-		logging.warning('*** PRUNING %s tweets...\n' % prune_count)
+		logging.info('PRUNING %s tweets...' % prune_count)
 		storage.prune_tweets(prune_count)
 		storage.compact()
 		
@@ -77,7 +77,7 @@ def process_tweet(item, args, storage):
 		update_geocode(item)
 	if args.only_coords and not item['coordinates']:
 		return
-	sys.stdout.write('\n%s -- %s\n' % (item['created_at'], item['text']))
+	sys.stdout.write('%s -- %s\n' % (item['created_at'], item['text']))
 	storage.save_tweet(item, 
 	                   save_retweeted_status=args.retweets, 
 	                   id_time=(not args.pager)) # epoch time or tweet id
@@ -87,48 +87,62 @@ def process_tweet(item, args, storage):
 		
 def page_collector(api, args, storage):
 	"""Pull tweets from REST pages."""
+	total_tweets = 0
 	params = to_dict(args.parameters)
 	iterator = TwitterRestPager(api, args.endpoint, params).get_iterator(wait=5.1)
-	for item in iterator:
-		if 'text' in item:
-			process_tweet(item, args, storage)
-		elif 'message' in item:
-			# must terminate
-			logging.error('*** ERROR: %s\n' % item)
-			break
+	try:
+		for item in iterator:
+			if 'text' in item:
+				total_tweets += 1
+				process_tweet(item, args, storage)
+			elif 'message' in item:
+				# must terminate
+				logging.error(item)
+				break
+	finally:
+		logging.info('Tweet count = %d' % total_tweets)
 
 
 def stream_collector(api, args, storage):
 	"""Pull tweets from stream."""
+	total_tweets = 0
+	total_skipped = 0
+	last_skipped = 0
 	params = to_dict(args.parameters)
 	while True:
 		try:
 			iterator = api.request(args.endpoint, params).get_iterator()
 			for item in iterator:
 				if 'text' in item:
+					total_tweets += 1
 					process_tweet(item, args, storage)
 				elif 'limit' in item:
-					logging.info('*** SKIPPED %s tweets' % item['limit']['track'])
+					last_skipped = item['limit']['track']
+					logging.info('SKIPPED %s tweets' % last_skipped)
 				elif 'warning' in item:
-					logging.warning('*** WARNING: %s' % item['warning'])
+					logging.warning(item['warning'])
 				elif 'disconnect' in item:
 					event = item['disconnect']
 					if event['code'] in [2,5,6,7]:
-						# must terminate
+						# streaming connection rejected
 						raise Exception(event)
 					else:
-						logging.info('*** RE-CONNECTING: %s' % event)
+						logging.info('RE-CONNECTING: %s' % event)
 						break
 				elif 'error' in item:
 					event = item['error'][0]
 					if event['code'] in [130,131]:
-						logging.info('*** RE-CONNECTING: %s' % event)
+						logging.info('RE-CONNECTING: %s' % event)
 						break
 					else:
-						# must terminate
+						# connection rejected
 						raise Exception(event)
 		except TwitterConnectionError:
 			continue
+		finally:
+			total_skipped += last_skipped
+			last_skipped = 0
+			logging.info('Tweet count = %d, Tweets skipped = %d' % (total_tweets,total_skipped))
 
 
 def run():
@@ -165,9 +179,9 @@ def run():
 		else:
 			stream_collector(api, args, storage)
 	except KeyboardInterrupt:
-		logging.info('\nTERMINATED BY USER\n')
+		logging.info('TERMINATED BY USER')
 	except Exception as e:
-		logging.error('\nTERMINATING %s %s\n' % (type(e), e.message))
+		logging.error('TERMINATING %s %s' % (type(e), e.message))
 	
 
 if __name__ == '__main__':
