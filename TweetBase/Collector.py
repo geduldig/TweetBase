@@ -7,10 +7,7 @@ import codecs
 import shlex
 import sys
 from .TweetCouch import TweetCouch
-from TwitterAPI.TwitterAPI import TwitterAPI
-from TwitterAPI.TwitterError import TwitterConnectionError
-from TwitterAPI.TwitterOAuth import TwitterOAuth
-from TwitterAPI.TwitterRestPager import TwitterRestPager
+from TwitterAPI import *
 from TwitterGeoPics.Geocoder import Geocoder
 
 
@@ -126,19 +123,13 @@ def stream_collector(api, args, storage):
 					if event['code'] in [2,5,6,7]:
 						# streaming connection rejected
 						raise Exception(event)
-					else:
-						logging.info('RE-CONNECTING: %s' % event)
-						break
-				elif 'error' in item:
-					event = item['error'][0]
-					if event['code'] in [130,131]:
-						logging.info('RE-CONNECTING: %s' % event)
-						break
-					else:
-						# connection rejected
-						raise Exception(event)
+					logging.info('RE-CONNECTING: %s' % event)
+					break
+		except TwitterRequestError as e:
+			if e.status_code < 500:
+				raise
 		except TwitterConnectionError:
-			continue
+			pass
 		finally:
 			total_skipped += last_skipped
 			last_skipped = 0
@@ -181,7 +172,7 @@ def run():
 	except KeyboardInterrupt:
 		logging.info('TERMINATED BY USER')
 	except Exception as e:
-		logging.error('TERMINATING %s %s' % (type(e), e.message))
+		logging.error('STOPPED: %s' % e)
 	
 
 if __name__ == '__main__':
