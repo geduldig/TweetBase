@@ -74,7 +74,9 @@ def process_tweet(item, args, storage):
 		update_geocode(item)
 	if args.only_coords and not item['coordinates']:
 		return
-	sys.stdout.write('%s -- %s\n' % (item['created_at'], item['text']))
+	sys.stdout.write('%s -- %d\n' % (item['created_at'], item['id']))
+	# 2/8 7:00pm EST = 564574000000000000
+	# 2/9 0:30am EST = 564657500000000000
 	storage.save_tweet(item, 
 	                   save_retweeted_status=args.retweets, 
 	                   id_time=(not args.pager)) # epoch time or tweet id
@@ -86,7 +88,9 @@ def page_collector(api, args, storage):
 	"""Pull tweets from REST pages."""
 	total_tweets = 0
 	params = to_dict(args.parameters)
-	iterator = TwitterRestPager(api, args.endpoint, params).get_iterator(wait=5.1)
+	wait = 5 if args.oauth_version == 1 else 2
+	wait *= 1.01 # wait a little extra
+	iterator = TwitterRestPager(api, args.endpoint, params).get_iterator(wait=wait)
 	try:
 		for item in iterator:
 			if 'text' in item:
@@ -133,7 +137,7 @@ def stream_collector(api, args, storage):
 		finally:
 			total_skipped += last_skipped
 			last_skipped = 0
-			logging.info('Tweet count = %d, Tweets skipped = %d' % (total_tweets,total_skipped))
+			logging.info('Tweet total count = %d, Tweets skipped = %d' % (total_tweets,total_skipped))
 
 
 def run():
@@ -143,6 +147,7 @@ def run():
 	parser.add_argument('-dbname', metavar='DB_NAME', type=str, help='database name')
 	parser.add_argument('-prune', metavar='PRUNE_COUNT', type=int, help='remove oldest tweets when threshhold reached')
 	parser.add_argument('-oauth', metavar='FILE_NAME', type=str, help='file containing OAuth credentials')
+	parser.add_argument('-oauth_version', metavar='OAUTH_VERSION', type=int, help='oAuth version (1 or 2)', default=1) 
 	parser.add_argument('-endpoint', metavar='ENDPOINT', type=str, help='Twitter endpoint')
 	parser.add_argument('-parameters', metavar='NAME_VALUE', type=str, help='Twitter parameter NAME=VALUE', nargs='+')
 	parser.add_argument('-pager', action='store_true', help='page from REST API until exhausted')
@@ -155,12 +160,15 @@ def run():
 		# optionally (no pun intended), read args from a settings file instead of from command line
 		with open(args.settings) as f:
 			args = parser.parse_args(shlex.split(f.read()))	
-			sys.stdout.write('DB: %s, %s %s\n' % (args.dbname, args.endpoint, args.parameters))
+	sys.stdout.write('Database: %s\nTwitter: %s %s\n' % (args.dbname, args.endpoint, args.parameters))
 
 	# twitter authentication
 	o = TwitterOAuth.read_file(args.oauth)
-	api = TwitterAPI(o.consumer_key, o.consumer_secret, o.access_token_key, o.access_token_secret)
-
+	oauth_version = 'oAuth%d' % 2#args.oauth_version
+	api = TwitterAPI(o.consumer_key, o.consumer_secret, 
+	                 o.access_token_key, o.access_token_secret,
+	                 auth_type=oauth_version)
+	
 	# initialize database repository for tweets
 	storage = TweetCouch(args.dbname, args.couchurl)
 

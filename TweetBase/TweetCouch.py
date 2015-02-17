@@ -30,6 +30,11 @@ class TweetCouch(object):
 		view = ViewDefinition('twitter', 'get_tweets', get_tweets)
 		view.sync(self.db)
 
+		# twitter/get_tweets_by_date (sort by date and tweet id)
+		get_tweets_by_date = 'function(doc) { if (doc.type == "TWITTER_STATUS") emit((new Date(doc.created_at).getTime())+"-"+("0000000000000000000"+doc.id).slice(-19), doc); }'
+		view = ViewDefinition('twitter', 'get_tweets_by_date', get_tweets_by_date)
+		view.sync(self.db)
+
 		# twitter/get_users
 		get_users = 'function(doc) { if (doc.type == "TWITTER_USER") emit(doc.id, doc); }'
 		view = ViewDefinition('twitter', 'get_users', get_users)
@@ -58,7 +63,7 @@ class TweetCouch(object):
 	def delete(self):
 		self.server.delete(self.db.name)
 
-	def _new_tweet_doc(self, tw):
+	def _new_tweet_doc(self, tw, id_time):
 		return {
 			'_id':                     tw['id_str'],
 			'type':                    'TWITTER_STATUS',
@@ -104,14 +109,14 @@ class TweetCouch(object):
 			'verified':                user['verified']
 		}
 
-	def save_tweet(self, tw, retweeted_by_id=None, save_retweeted_status=True):
+	def save_tweet(self, tw, retweeted_by_id=None, save_retweeted_status=True, id_time=False):
 		doc = self.db.get(tw['id_str'])
 		if not doc:
 			if save_retweeted_status and 'retweeted_status' in tw:
 				self.save_tweet(tw['retweeted_status'], tw['id_str'])
 				# NEED TO UPDATE retweet_count OF tw['retweeted_status'] ???
 			self.save_user(tw['user'])
-			doc = self._new_tweet_doc(tw)
+			doc = self._new_tweet_doc(tw, id_time)
 		if retweeted_by_id:
 			doc['retweeted_by_list'].append(retweeted_by_id)
 		self.db.save(doc)
