@@ -75,8 +75,6 @@ def process_tweet(item, args, storage):
 	if args.only_coords and not item['coordinates']:
 		return
 	sys.stdout.write('%s -- %d\n' % (item['created_at'], item['id']))
-	# 2/8 7:00pm EST = 564574000000000000
-	# 2/9 0:30am EST = 564657500000000000
 	storage.save_tweet(item, 
 	                   save_retweeted_status=args.retweets, 
 	                   id_time=(not args.pager)) # epoch time or tweet id
@@ -164,7 +162,7 @@ def run():
 
 	# twitter authentication
 	o = TwitterOAuth.read_file(args.oauth)
-	oauth_version = 'oAuth%d' % 2#args.oauth_version
+	oauth_version = 'oAuth%d' % args.oauth_version
 	api = TwitterAPI(o.consumer_key, o.consumer_secret, 
 	                 o.access_token_key, o.access_token_secret,
 	                 auth_type=oauth_version)
