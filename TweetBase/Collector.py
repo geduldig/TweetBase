@@ -4,11 +4,14 @@
 
 import argparse
 import codecs
+import pytz
 import shlex
 import sys
+from datetime import datetime
 from .TweetCouch import TweetCouch
 from TwitterAPI import *
 from TwitterGeoPics.Geocoder import Geocoder
+from tzwhere import tzwhere
 
 
 # SET UP LOGGING TO FILE AND TO CONSOLE
@@ -26,6 +29,7 @@ logger.addHandler(ch)
 
 
 GEO = Geocoder()
+TZ = tzwhere.tzwhere()
 
 
 def to_dict(param_list):
@@ -34,28 +38,49 @@ def to_dict(param_list):
 		return {name: value for (name, value) in [param.split('=') for param in param_list]}
 	else:
 		return None
-		
+
+
+def compare_timezone(latitude, longitude, utc_offset):
+	"""The trick: Does longitude fall within timezone?"""
+	try:
+		tz_name =  TZ.tzNameAt(latitude, longitude)
+		if not tz_name:
+			return False
+		military = datetime.now(pytz.timezone(tz_name)).strftime('%z')
+		hours = int(military[:(len(military)-2)])
+		minutes = int(military[-2:])
+		seconds = (abs(hours)*60 + minutes)*60
+	except Exception as e:
+		logging.error('COMPARE TIME ZONE ERROR: %s' % e)
+		return False
+	test = abs(seconds - abs(utc_offset)) <= 3600 
+	#strict_test = abs(hours/abs(hours)*seconds - utc_offset) <= 3600
+	return test
+
+
 
 def update_geocode(status):
 	"""Get geocode from tweet's 'coordinates' field (unlikely) or from tweet's location and Google."""
-	if status['coordinates']:
-		sys.stdout.write('COORDINATES: %s\n' % status['coordinates']['coordinates'])
-	if status['place']:
-		sys.stdout.write('PLACE: %s\n' % status['place']['full_name'])
-	if status['user']['location']:
-		sys.stdout.write('LOCATION: %s\n' % status['user']['location'])
+	coords = status['coordinates']['coordinates'] if status['coordinates'] else None
+	loc = status['user']['location'] if status['user']['location'] else None
+	utc = status['user']['utc_offset'] if status['user']['utc_offset'] else None
 
-	if not GEO.quota_exceeded:
+	if coords:
+		print('==== COORDINATES: %s' % coords)
+	
+	if not coords and loc and utc and not GEO.quota_exceeded:
 		try:
 			geocode = GEO.geocode_tweet(status)
 			if geocode[0]:
-				sys.stdout.write('GEOCODER: %s %s,%s\n' % geocode)
+				print('==== GEOCODER: %s %s,%s' % geocode)
 				location, latitude, longitude = geocode
-				status['user']['location'] = location
-				status['coordinates'] = {'coordinates':[longitude, latitude]}
+				if compare_timezone(latitude, longitude, utc):
+					print('==== MATCHED')
+					status['user']['location'] = '* ' + location
+					status['coordinates'] = {'coordinates':[longitude, latitude]}
 		except Exception as e:
 			if GEO.quota_exceeded:
-				sys.stdout.write('GEOCODER QUOTA EXCEEDED: %s\n' % GEO.count_request)
+				logging.error('GEOCODER QUOTA EXCEEDED: %s' % GEO.count_request)
 
 
 def prune_database(storage, prune_limit):
