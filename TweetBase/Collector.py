@@ -29,7 +29,10 @@ logger.addHandler(ch)
 
 
 GEO = Geocoder()
+logging.info('Read Geocoder cache, size %d' % len(GEO.cache))
+
 TZ = tzwhere.tzwhere()
+logging.info('Read timezone data')
 
 
 def to_dict(param_list):
