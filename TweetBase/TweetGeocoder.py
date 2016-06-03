@@ -31,6 +31,12 @@ def update_geocode(status):
 	if 'geocoder' in status:
 		return
 
+	if GEO.quota_exceeded:
+		elapsed = datetime.now() - GEO.quota_exceeded_at
+		if elapsed.days > 0:
+			GEO.quota_exceeded = False
+			GEO.quota_exceeded_at = None
+
 	coords = status['coordinates']['coordinates'] if status['coordinates'] else None
 	loc = status['user']['location'] if status['user']['location'] else None
 	utc = status['user']['utc_offset'] if status['user']['utc_offset'] else None

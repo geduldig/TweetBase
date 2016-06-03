@@ -56,9 +56,13 @@ def process_tweet(item, args, storage):
 	if args.only_coords and not item['coordinates']:
 		return
 	sys.stdout.write('%s -- %d\n' % (item['created_at'], item['id']))
-	storage.save_tweet(item, 
-	                   save_retweeted_status=args.retweets, 
-	                   raw=args.save_raw)
+	try:
+		storage.save_tweet(item, 
+		                   save_retweeted_status=args.retweets, 
+		                   raw=args.save_raw)
+	except Exception as e:
+		logging.error(str(e))
+		logging.error(item)
 	if args.prune:
 		prune_database(storage, args.prune)
 

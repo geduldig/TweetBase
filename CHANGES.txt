@@ -3,10 +3,11 @@ v0.1.6,     5 Mar 2014 -- Better tweet pruning.
 v0.1.7,     5 Mar 2014 -- Fixed settings command-line argument.
 v0.1.8,     8 May 2014 -- Inclusion of tweet place field for geocoding.
 v0.1.9,    14 May 2014 -- Added option to not store original retweeted tweet.
-v0.2.0,     4 Dec 2014 -- Added option to page REST API results
-v0.2.1,     5 Dec 2014 -- Renamed TweetBase.py to Collector.py
-v0.2.2,    15 Dec 2014 -- Updated Collector.py for fault tolerance
-v0.2.3,    12 Jan 2015 -- Updated Collector.py for paging
-v0.2.4,    14 Jan 2015 -- Added logging
-v0.2.5,    26 Jan 2015 -- Reorganized Collector.py, added get-tweet-by-date view
-v0.2.8,    26 Jan 2015 -- Added TweetGeocoder.py
+v0.2.0,     4 Dec 2014 -- Added option to page REST API results.
+v0.2.1,     5 Dec 2014 -- Renamed TweetBase.py to Collector.py.
+v0.2.2,    15 Dec 2014 -- Updated Collector.py for fault tolerance.
+v0.2.3,    12 Jan 2015 -- Updated Collector.py for paging.
+v0.2.4,    14 Jan 2015 -- Added logging.
+v0.2.5,    26 Jan 2015 -- Reorganized Collector.py, added get-tweet-by-date view.
+v0.2.8,    02 Jun 2016 -- Added TweetGeocoder.py.
+v0.2.9,    03 Jun 2016 -- Reset geocoded after 1 day if API limit exceeded.
