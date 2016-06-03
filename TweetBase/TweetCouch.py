@@ -109,18 +109,33 @@ class TweetCouch(object):
 			'verified':                user['verified']
 		}
 
-	def save_tweet(self, tw, retweeted_by_id=None, save_retweeted_status=True, id_time=False):
-		doc = self.db.get(tw['id_str'])
-		if not doc:
+	# def save_tweet(self, tw, retweeted_by_id=None, save_retweeted_status=True, id_time=False):
+	# 	doc = self.db.get(tw['id_str'])
+	# 	if not doc:
+	# 		if save_retweeted_status and 'retweeted_status' in tw:
+	# 			self.save_tweet(tw['retweeted_status'], tw['id_str'])
+	# 			# NEED TO UPDATE retweet_count OF tw['retweeted_status'] ???
+	# 		self.save_user(tw['user'])
+	# 		doc = self._new_tweet_doc(tw, id_time)
+	# 	if retweeted_by_id:
+	# 		doc['retweeted_by_list'].append(retweeted_by_id)
+	# 	self.db.save(doc)
+		
+	def save_tweet(self, tw, retweeted_by_id=None, save_retweeted_status=True, raw=False):
+		if raw:
+			tw['_id'] = tw['id_str']
+			tw['type'] = 'TWITTER_STATUS'
+			self.db.save(tw)
+		else:
+			# SAVE TWEET W/O USER FIELD, AND SAVE USER AS A SEPARATE RECORD
 			if save_retweeted_status and 'retweeted_status' in tw:
 				self.save_tweet(tw['retweeted_status'], tw['id_str'])
-				# NEED TO UPDATE retweet_count OF tw['retweeted_status'] ???
 			self.save_user(tw['user'])
-			doc = self._new_tweet_doc(tw, id_time)
-		if retweeted_by_id:
-			doc['retweeted_by_list'].append(retweeted_by_id)
-		self.db.save(doc)
-		
+			doc = self._new_tweet_doc(tw)
+			if retweeted_by_id:
+				doc['retweeted_by_list'].append(retweeted_by_id)
+			self.db.save(doc)
+
 	def save_user(self, user):
 		if not self.db.get(user['id_str']):
 			doc = self._new_user_doc(user)

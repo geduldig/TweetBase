@@ -4,18 +4,18 @@
 
 import argparse
 import codecs
-import pytz
 import shlex
 import sys
-from datetime import datetime
 from .TweetCouch import TweetCouch
 from TwitterAPI import *
-from TwitterGeoPics.Geocoder import Geocoder
-from tzwhere import tzwhere
+from .TweetGeocoder import update_geocode, geocoder_stats
 
 
 # SET UP LOGGING TO FILE AND TO CONSOLE
 import logging
+logging.getLogger("requests").setLevel(logging.WARNING)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("tzwhere").setLevel(logging.WARNING)
 formatter = logging.Formatter('%(levelname)s %(asctime)s %(message)s',
                               '%m/%d/%Y %I:%M:%S %p')
 fh = logging.FileHandler('Collector.log')
@@ -28,62 +28,12 @@ logger.addHandler(fh)
 logger.addHandler(ch)
 
 
-GEO = Geocoder()
-logging.info('Read Geocoder cache, size %d' % len(GEO.cache))
-
-TZ = tzwhere.tzwhere()
-logging.info('Read timezone data')
-
-
 def to_dict(param_list):
 	"""Convert a list of key=value to dict[key]=value"""			
 	if param_list:
 		return {name: value for (name, value) in [param.split('=') for param in param_list]}
 	else:
 		return None
-
-
-def compare_timezone(latitude, longitude, utc_offset):
-	"""The trick: Does longitude fall within timezone?"""
-	try:
-		tz_name =  TZ.tzNameAt(latitude, longitude)
-		if not tz_name:
-			return False
-		military = datetime.now(pytz.timezone(tz_name)).strftime('%z')
-		hours = int(military[:(len(military)-2)])
-		minutes = int(military[-2:])
-		seconds = (abs(hours)*60 + minutes)*60
-	except Exception as e:
-		logging.error('COMPARE TIME ZONE ERROR: %s' % e)
-		return False
-	test = abs(seconds - abs(utc_offset)) <= 3600 
-	#strict_test = abs(hours/abs(hours)*seconds - utc_offset) <= 3600
-	return test
-
-
-
-def update_geocode(status):
-	"""Get geocode from tweet's 'coordinates' field (unlikely) or from tweet's location and Google."""
-	coords = status['coordinates']['coordinates'] if status['coordinates'] else None
-	loc = status['user']['location'] if status['user']['location'] else None
-	utc = status['user']['utc_offset'] if status['user']['utc_offset'] else None
-
-	if coords:
-		print('==== COORDINATES: %s' % coords)
-	
-	if not coords and loc and utc and not GEO.quota_exceeded:
-		try:
-			geocode = GEO.geocode_tweet(status)
-			if geocode[0]:
-				print('==== GEOCODER: %s %s,%s' % geocode)
-				location, latitude, longitude = geocode
-				if compare_timezone(latitude, longitude, utc):
-					print('==== MATCHED')
-					status['user']['location'] = '* ' + location
-					status['coordinates'] = {'coordinates':[longitude, latitude]}
-		except Exception as e:
-			if GEO.quota_exceeded:
-				logging.error('GEOCODER QUOTA EXCEEDED: %s' % GEO.count_request)
 
 
 def prune_database(storage, prune_limit):
@@ -99,13 +49,16 @@ def prune_database(storage, prune_limit):
 def process_tweet(item, args, storage):
 	"""Do something with a downloaded tweet."""
 	if args.google_geocode:
-		update_geocode(item)
+		try:
+			update_geocode(item)
+		except Exception as e:
+			logging.warning(str(e))
 	if args.only_coords and not item['coordinates']:
 		return
 	sys.stdout.write('%s -- %d\n' % (item['created_at'], item['id']))
 	storage.save_tweet(item, 
 	                   save_retweeted_status=args.retweets, 
-	                   id_time=(not args.pager)) # epoch time or tweet id
+	                   raw=args.save_raw)
 	if args.prune:
 		prune_database(storage, args.prune)
 
@@ -164,6 +117,7 @@ def stream_collector(api, args, storage):
 			total_skipped += last_skipped
 			last_skipped = 0
 			logging.info('Tweet total count = %d, Tweets skipped = %d' % (total_tweets,total_skipped))
+			logging.info(geocoder_stats())
 
 
 def run():
@@ -180,6 +134,7 @@ def run():
 	parser.add_argument('-google_geocode', action='store_true', help='lookup geocode from Google')
 	parser.add_argument('-only_coords', action='store_true', help='throw out tweets that do not have coordinates')
 	parser.add_argument('-retweets', action='store_true', help='save retweeted tweets to database')
+	parser.add_argument('-save_raw', action='store_true', help='save raw tweets to database')
 
 	args = parser.parse_args()
 	if args.settings:
