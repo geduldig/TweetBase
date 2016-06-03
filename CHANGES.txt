@@ -9,3 +9,4 @@ v0.2.2,    15 Dec 2014 -- Updated Collector.py for fault tolerance
 v0.2.3,    12 Jan 2015 -- Updated Collector.py for paging
 v0.2.4,    14 Jan 2015 -- Added logging
 v0.2.5,    26 Jan 2015 -- Reorganized Collector.py, added get-tweet-by-date view
+v0.2.8,    26 Jan 2015 -- Added TweetGeocoder.py
