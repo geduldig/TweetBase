@@ -51,25 +51,26 @@ def update_geocode(status):
 			(bounding_box[1][1] + bounding_box[2][1]) / 2.
 		]
 		status['geocoder'] = 'place'
-	elif not coords and loc and utc and not GEO.quota_exceeded:
-		try:
-			geocode = GEO.geocode_tweet(status)
-			if geocode[0]:
-				location, latitude, longitude = geocode
-				if compare_timezone(latitude, longitude, utc):
-					# status['user']['location'] = '* ' + location
-					status['coordinates'] = {'coordinates':[longitude, latitude]}
-					status['geocoder'] = 'utc'
+	elif not coords and loc and utc:
+		if not GEO.quota_exceeded:
+			try:
+				geocode = GEO.geocode_tweet(status)
+				if geocode[0]:
+					location, latitude, longitude = geocode
+					if compare_timezone(latitude, longitude, utc):
+						# status['user']['location'] = '* ' + location
+						status['coordinates'] = {'coordinates':[longitude, latitude]}
+						status['geocoder'] = 'utc'
+					else:
+						status['geocoder'] = 'none'
 				else:
 					status['geocoder'] = 'none'
-			else:
-				status['geocoder'] = 'none'
-		except Exception as e:
-			if hasattr(e, 'status') and e.status == 'ZERO_RESULTS':
-				status['geocoder'] = 'none'
-			elif GEO.quota_exceeded:
-				# logging.error('GEOCODER QUOTA EXCEEDED: %s' % GEO.count_request)
-				raise Exception('GEOCODER QUOTA EXCEEDED: %s' % GEO.count_request)
+			except Exception as e:
+				if hasattr(e, 'status') and e.status == 'ZERO_RESULTS':
+					status['geocoder'] = 'none'
+				elif GEO.quota_exceeded:
+					# logging.error('GEOCODER QUOTA EXCEEDED: %s' % GEO.count_request)
+					raise Exception('GEOCODER QUOTA EXCEEDED: %s' % GEO.count_request)
 	else:
 		status['geocoder'] = 'none'
 
