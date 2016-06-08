@@ -50,6 +50,7 @@ def update_geocode(status):
 			(bounding_box[0][0] + bounding_box[1][0]) / 2.,
 			(bounding_box[1][1] + bounding_box[2][1]) / 2.
 		]
+		status['coordinates'] = {'coordinates':coords}
 		status['geocoder'] = 'place'
 	elif not coords and loc and utc:
 		if not GEO.quota_exceeded:
@@ -58,7 +59,6 @@ def update_geocode(status):
 				if geocode[0]:
 					location, latitude, longitude = geocode
 					if compare_timezone(latitude, longitude, utc):
-						# status['user']['location'] = '* ' + location
 						status['coordinates'] = {'coordinates':[longitude, latitude]}
 						status['geocoder'] = 'utc'
 					else:

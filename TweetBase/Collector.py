@@ -48,6 +48,8 @@ def prune_database(storage, prune_limit):
 
 def process_tweet(item, args, storage):
 	"""Do something with a downloaded tweet."""
+	if args.no_retweets and 'retweeted_status' in item:
+		return
 	if args.google_geocode:
 		try:
 			update_geocode(item)
@@ -58,7 +60,7 @@ def process_tweet(item, args, storage):
 	sys.stdout.write('%s -- %d\n' % (item['created_at'], item['id']))
 	try:
 		storage.save_tweet(item, 
-		                   save_retweeted_status=args.retweets, 
+		                   save_retweeted_status=args.save_retweets, 
 		                   raw=args.save_raw)
 	except Exception as e:
 		logging.error(str(e))
@@ -137,7 +139,8 @@ def run():
 	parser.add_argument('-pager', action='store_true', help='page from REST API until exhausted')
 	parser.add_argument('-google_geocode', action='store_true', help='lookup geocode from Google')
 	parser.add_argument('-only_coords', action='store_true', help='throw out tweets that do not have coordinates')
-	parser.add_argument('-retweets', action='store_true', help='save retweeted tweets to database')
+	parser.add_argument('-no_retweets', action='store_true', help='filter out retweets')
+	parser.add_argument('-save_retweets', action='store_true', help='for retweets, save original tweet to database')
 	parser.add_argument('-save_raw', action='store_true', help='save raw tweets to database')
 
 	args = parser.parse_args()
