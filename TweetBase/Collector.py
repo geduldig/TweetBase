@@ -64,7 +64,6 @@ def process_tweet(item, args, storage):
 		                   raw=args.save_raw)
 	except Exception as e:
 		logging.error(str(e))
-		logging.error(item)
 	if args.prune:
 		prune_database(storage, args.prune)
 
