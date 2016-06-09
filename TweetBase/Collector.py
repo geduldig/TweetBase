@@ -57,7 +57,8 @@ def process_tweet(item, args, storage):
 			logging.warning(str(e))
 	if args.only_coords and not item['coordinates']:
 		return
-	sys.stdout.write('%s -- %d\n' % (item['created_at'], item['id']))
+	# sys.stdout.write('%s -- %d\n' % (item['created_at'], item['id']))
+	sys.stdout.write('%s\n' % item['text'])
 	try:
 		storage.save_tweet(item, 
 		                   save_retweeted_status=args.save_retweets, 
