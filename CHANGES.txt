@@ -11,4 +11,4 @@ v0.2.4,    14 Jan 2015 -- Added logging.
 v0.2.5,    26 Jan 2015 -- Reorganized Collector.py, added get-tweet-by-date view.
 v0.2.8,    02 Jun 2016 -- Added TweetGeocoder.py.
 v0.2.9,    03 Jun 2016 -- Reset geocoded after 1 day if API limit exceeded.
-v0.2.11,   08 Jun 2016 -- Added option to skip retweets.
+v0.2.12,   09 Jun 2016 -- Added option to skip retweets.
