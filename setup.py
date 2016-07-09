@@ -14,7 +14,7 @@ def read(*filenames, **kwargs):
 setup(
     name='TweetBase',
     version=__version__,
-    author='boxnumber03',
+    author='geduldig',
     author_email='boxnumber03@gmail.com',
     packages=['TweetBase'],
     url='https://github.com/geduldig/TweetBase',
