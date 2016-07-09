@@ -1,8 +1,8 @@
 __title__ = 'TweetBase'
 __version__ = '0.2.12'
-__author__ = 'Jonas Geduldig'
+__author__ = 'boxnumber03'
 __license__ = 'MIT'
-__copyright__ = 'Copyright 2014 Jonas Geduldig'
+__copyright__ = 'Copyright 2014 boxnumber03'
 
 
 try:
