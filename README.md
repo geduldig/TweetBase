@@ -1,7 +1,7 @@
 TweetBase
 =========
-[![Downloads](https://pypip.in/d/TweetBase/badge.png)](https://crate.io/packages/TweetBase)
-[![Downloads](https://pypip.in/v/TweetBase/badge.png)](https://crate.io/packages/TweetBase) 
+[![Downloads](https://img.shields.io/pypi/dm/TweetBase.svg)](https://crate.io/packages/TweetBase)
+[![Downloads](https://img.shields.io/pypi/v/TweetBase.svg)](https://crate.io/packages/TweetBase) 
 
 Download tweets into a CouchDB database
 
